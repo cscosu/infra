@@ -1,0 +1,12 @@
+[project]
+name = "challenge-generation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1.7",
+    "jinja2>=3.1.4",
+    "pydantic>=2.9.2",
+    "pyyaml>=6.0.2",
+]

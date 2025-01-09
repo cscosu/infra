@@ -1,0 +1,29 @@
+[Unit]
+Description=traefik proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment="AWS_DEFAULT_REGION=us-east-2"
+Restart=always
+RestartSec=10
+User=traefik
+Group=traefik
+ExecStart=/usr/local/bin/traefik --configfile=/etc/traefik/traefik.yml
+; Limit the number of file descriptors; see `man systemd.exec` for more limit settings.
+LimitNOFILE=1048576
+PrivateTmp=true
+PrivateDevices=false
+; Hide /home, /root, and /run/user
+ProtectHome=true
+; Make /usr, /boot, /etc read-only.
+ProtectSystem=full
+; … except /etc/ssl/traefik, because we want Letsencrypt-certificates there.
+;   This merely retains r/w access rights, it does not add any new. Must still be writable on the host!
+ReadWriteDirectories=/etc/traefik/acme
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
