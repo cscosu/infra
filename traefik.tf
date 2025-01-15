@@ -1,18 +1,3 @@
-resource "tls_private_key" "traefik" {
-  algorithm = "RSA"
-}
-
-resource "local_file" "traefik_private_key" {
-  content         = tls_private_key.traefik.private_key_pem
-  filename        = "${local.out_dir}/traefik_key.pem"
-  file_permission = "0600"
-}
-
-resource "aws_key_pair" "traefik" {
-  key_name   = "${local.name}-ssh-key-traefik"
-  public_key = tls_private_key.traefik.public_key_openssh
-}
-
 # resource "aws_eip" "traefik" {
 #   domain = "vpc"
 #   tags = {
@@ -33,40 +18,50 @@ data "aws_ami" "ecs-optimized" {
   }
 }
 
-resource "aws_vpc_endpoint" "ssm" {
-  vpc_id             = aws_vpc.default.id
-  service_name       = "com.amazonaws.${local.region}.ssm"
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = [aws_subnet.default.id]
-  security_group_ids = [aws_security_group.traefik.id, aws_security_group.ctfd.id]
-
-  private_dns_enabled = true
-}
-
-resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id             = aws_vpc.default.id
-  service_name       = "com.amazonaws.${local.region}.ssmmessages"
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = [aws_subnet.default.id]
-  security_group_ids = [aws_security_group.traefik.id, aws_security_group.ctfd.id]
-
-  private_dns_enabled = true
-}
-
 resource "aws_instance" "traefik" {
   ami                  = data.aws_ami.ecs-optimized.id
   instance_type        = "t4g.nano"
-  subnet_id            = aws_subnet.default.id
-  key_name             = aws_key_pair.traefik.key_name
+  subnet_id            = aws_subnet.public.id
   iam_instance_profile = aws_iam_instance_profile.ecs_instance.name
+  depends_on           = [aws_internet_gateway.default]
 
-  vpc_security_group_ids = [
-    aws_security_group.traefik.id,
-  ]
+  source_dest_check = false
+
+  vpc_security_group_ids = [aws_security_group.traefik.id]
 
   associate_public_ip_address = true
 
-  user_data = base64encode("#!/bin/bash\n\necho \"ECS_CLUSTER=${aws_ecs_cluster.default.name}\" > /etc/ecs/ecs.config\n")
+  user_data = base64encode(<<-INIT
+    #!/bin/bash
+    echo "ECS_CLUSTER=${aws_ecs_cluster.default.name}" > /etc/ecs/ecs.config
+
+    echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+    sysctl -p
+
+    cat <<EOF > /etc/systemd/system/nat-setup.service
+    [Unit]
+    Description=Setup NAT routing
+    After=docker.service
+    Requires=docker.service
+    PartOf=docker.service
+
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/sbin/iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
+    ExecStop=/usr/sbin/iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
+    RemainAfterExit=yes
+
+    [Install]
+    WantedBy=docker.service
+    Also=docker.service
+    EOF
+
+    systemctl daemon-reload
+    systemctl enable nat-setup
+    systemctl start nat-setup
+    INIT
+  )
+  user_data_replace_on_change = true
 
   tags = {
     Name = "${local.name}-ec2-traefik"
@@ -116,14 +111,14 @@ resource "aws_ecs_task_definition" "traefik" {
           name  = "TRAEFIK_PROVIDERS_ECS_REFRESHSECONDS",
           value = "15"
         },
-        {
-          name  = "TRAEFIK_LOG_FILEPATH",
-          value = "/traefiklogs",
-        },
-        {
-          name  = "TRAEFIK_LOG_LEVEL",
-          value = "TRACE",
-        }
+        # {
+        #   name  = "TRAEFIK_LOG_FILEPATH",
+        #   value = "/traefiklogs",
+        # },
+        # {
+        #   name  = "TRAEFIK_LOG_LEVEL",
+        #   value = "TRACE",
+        # }
       ]
 
       portMappings = [
@@ -171,10 +166,16 @@ resource "aws_ecs_task_definition" "traefik" {
 }
 
 resource "aws_ecs_service" "traefik" {
+  depends_on      = [aws_iam_role_policy.ecs_cluster_permissions, aws_instance.traefik, aws_ecs_cluster.default]
   name            = "${local.name}-ecs-service-traefik"
   cluster         = aws_ecs_cluster.default.id
   task_definition = aws_ecs_task_definition.traefik.arn
   desired_count   = 1
+
+  placement_constraints {
+    type       = "memberOf"
+    expression = "ec2InstanceId in ['${aws_instance.traefik.id}']"
+  }
 }
 
 resource "aws_security_group" "traefik" {

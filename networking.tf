@@ -24,15 +24,16 @@ resource "aws_subnet" "default" {
   vpc_id                  = aws_vpc.default.id
   cidr_block              = "10.0.0.0/24"
   availability_zone       = data.aws_availability_zones.default.names[0]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = {
-    Name = "${local.name}-subnet"
+    Name = "${local.name}-private-subnet"
   }
 }
 
 resource "aws_route_table" "default" {
-  vpc_id = aws_vpc.default.id
+  vpc_id     = aws_vpc.default.id
+  depends_on = [aws_internet_gateway.default]
 
   route {
     ipv6_cidr_block = "::/0"
@@ -49,7 +50,36 @@ resource "aws_route_table" "default" {
   }
 }
 
-resource "aws_route_table_association" "default" {
+resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.default.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.default.id
+
+  route {
+    cidr_block           = "0.0.0.0/0"
+    network_interface_id = aws_instance.traefik.primary_network_interface_id
+  }
+
+  tags = {
+    Name = "${local.name}-rt-private"
+  }
+}
+
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.default.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = data.aws_availability_zones.default.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${local.name}-public-subnet"
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.default.id
 }
