@@ -8,6 +8,10 @@ resource "aws_instance" "ctfd" {
   associate_public_ip_address = false
   user_data_replace_on_change = true
 
+  instance_market_options {
+    market_type = "spot"
+  }
+
   user_data = base64encode("#!/bin/bash\n\necho \"ECS_CLUSTER=${aws_ecs_cluster.default.name}\" > /etc/ecs/ecs.config\n")
 
   tags = {

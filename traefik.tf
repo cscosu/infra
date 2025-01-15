@@ -19,17 +19,18 @@ data "aws_ami" "ecs-optimized" {
 }
 
 resource "aws_instance" "traefik" {
-  ami                  = data.aws_ami.ecs-optimized.id
-  instance_type        = "t4g.nano"
-  subnet_id            = aws_subnet.public.id
-  iam_instance_profile = aws_iam_instance_profile.ecs_instance.name
-  depends_on           = [aws_internet_gateway.default]
-
-  source_dest_check = false
-
-  vpc_security_group_ids = [aws_security_group.traefik.id]
-
+  ami                         = data.aws_ami.ecs-optimized.id
+  instance_type               = "t4g.nano"
+  subnet_id                   = aws_subnet.public.id
+  iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
+  depends_on                  = [aws_internet_gateway.default]
+  vpc_security_group_ids      = [aws_security_group.traefik.id]
+  source_dest_check           = false
   associate_public_ip_address = true
+
+  instance_market_options {
+    market_type = "spot"
+  }
 
   user_data = base64encode(<<-INIT
     #!/bin/bash
