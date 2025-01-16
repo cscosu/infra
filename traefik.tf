@@ -29,16 +29,8 @@ resource "aws_instance" "traefik" {
   source_dest_check           = false
   associate_public_ip_address = true
 
-  root_block_device {
-    encrypted = true
-  }
-
   instance_market_options {
     market_type = "spot"
-    spot_options {
-      instance_interruption_behavior = "hibernate"
-      spot_instance_type             = "persistent"
-    }
   }
 
   user_data = base64encode(<<-INIT
