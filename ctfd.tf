@@ -8,8 +8,16 @@ resource "aws_instance" "ctfd" {
   associate_public_ip_address = false
   user_data_replace_on_change = true
 
+  root_block_device {
+    encrypted = true
+  }
+
   instance_market_options {
     market_type = "spot"
+    spot_options {
+      spot_instance_type             = "persistent"
+      instance_interruption_behavior = "hibernate"
+    }
   }
 
   user_data = base64encode("#!/bin/bash\n\necho \"ECS_CLUSTER=${aws_ecs_cluster.default.name}\" > /etc/ecs/ecs.config\n")

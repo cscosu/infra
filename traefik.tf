@@ -1,9 +1,10 @@
-# resource "aws_eip" "traefik" {
-#   domain = "vpc"
-#   tags = {
-#     Name = "traefik-eip-${terraform.workspace}"
-#   }
-# }
+resource "aws_eip" "traefik" {
+  instance = aws_instance.traefik.id
+  domain = "vpc"
+  tags = {
+    Name = "traefik-eip-${terraform.workspace}"
+  }
+}
 
 data "aws_ami" "ecs-optimized" {
   most_recent = true
@@ -28,8 +29,16 @@ resource "aws_instance" "traefik" {
   source_dest_check           = false
   associate_public_ip_address = true
 
+  root_block_device {
+    encrypted = true
+  }
+
   instance_market_options {
     market_type = "spot"
+    spot_options {
+      instance_interruption_behavior = "hibernate"
+      spot_instance_type             = "persistent"
+    }
   }
 
   user_data = base64encode(<<-INIT
@@ -120,6 +129,22 @@ resource "aws_ecs_task_definition" "traefik" {
         #   name  = "TRAEFIK_LOG_LEVEL",
         #   value = "TRACE",
         # }
+        {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_myResolver",
+          value = "true"
+        },
+        {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_myResolver_ACME_CACERTIFICATES",
+          value = "true"
+        },
+        {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_myResolver_ACME_DNSCHALLENGE",
+          value = "true"
+        },
+        {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_<NAME>_ACME_DNSCHALLENGE_PROVIDER",
+          value = "route53"
+        },
       ]
 
       portMappings = [
@@ -289,4 +314,14 @@ data "aws_iam_policy_document" "ecs_cluster_permissions" {
       "*"
     ]
   }
+}
+
+
+resource "aws_route53_record" "wildcard_domain_record" {
+  count   = 1
+  zone_id = local.domain_zone_id
+  name    = "*.testing.${local.domain}"
+  type    = "A"
+  ttl     = 300
+  records = [aws_eip.traefik.public_ip]
 }
