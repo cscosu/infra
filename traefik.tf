@@ -1,6 +1,6 @@
 resource "aws_eip" "traefik" {
   instance = aws_instance.traefik.id
-  domain = "vpc"
+  domain   = "vpc"
   tags = {
     Name = "traefik-eip-${terraform.workspace}"
   }
@@ -27,10 +27,14 @@ resource "aws_instance" "traefik" {
   depends_on                  = [aws_internet_gateway.default]
   vpc_security_group_ids      = [aws_security_group.traefik.id]
   source_dest_check           = false
-  associate_public_ip_address = true
+  associate_public_ip_address = false
 
   instance_market_options {
     market_type = "spot"
+    spot_options {
+      instance_interruption_behavior = "stop"
+      spot_instance_type             = "persistent"
+    }
   }
 
   user_data = base64encode(<<-INIT
@@ -63,7 +67,6 @@ resource "aws_instance" "traefik" {
     systemctl start nat-setup
     INIT
   )
-  user_data_replace_on_change = true
 
   tags = {
     Name = "${local.name}-ec2-traefik"
@@ -105,6 +108,14 @@ resource "aws_ecs_task_definition" "traefik" {
           name  = "TRAEFIK_ENTRYPOINTS_WEB_ADDRESS",
           value = ":80"
         },
+        {
+          name  = "TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS",
+          value = ":443"
+        },
+        {
+          name  = "TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_CERTRESOLVER",
+          value = "myresolver"
+        },
         # {
         #   name  = "TRAEFIK_PROVIDERS_ECS_HEALTHYTASKSONLY",
         #   value = "true"
@@ -113,30 +124,26 @@ resource "aws_ecs_task_definition" "traefik" {
           name  = "TRAEFIK_PROVIDERS_ECS_REFRESHSECONDS",
           value = "15"
         },
-        # {
-        #   name  = "TRAEFIK_LOG_FILEPATH",
-        #   value = "/traefiklogs",
-        # },
-        # {
-        #   name  = "TRAEFIK_LOG_LEVEL",
-        #   value = "TRACE",
-        # }
         {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_myResolver",
+          name  = "TRAEFIK_LOG_FILEPATH",
+          value = "/traefiklogs",
+        },
+        {
+          name  = "TRAEFIK_LOG_LEVEL",
+          value = "TRACE",
+        },
+        {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_EMAIL",
+          value = "cscosu@gmail.com"
+        },
+        {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_HTTPCHALLENGE",
           value = "true"
         },
         {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_myResolver_ACME_CACERTIFICATES",
-          value = "true"
-        },
-        {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_myResolver_ACME_DNSCHALLENGE",
-          value = "true"
-        },
-        {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_<NAME>_ACME_DNSCHALLENGE_PROVIDER",
-          value = "route53"
-        },
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_HTTPCHALLENGE_ENTRYPOINT",
+          value = "web"
+        }
       ]
 
       portMappings = [

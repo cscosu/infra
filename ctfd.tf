@@ -6,10 +6,13 @@ resource "aws_instance" "ctfd" {
   depends_on                  = [aws_internet_gateway.default]
   vpc_security_group_ids      = [aws_security_group.ctfd.id]
   associate_public_ip_address = false
-  user_data_replace_on_change = true
 
   instance_market_options {
     market_type = "spot"
+    spot_options {
+      instance_interruption_behavior = "stop"
+      spot_instance_type             = "persistent"
+    }
   }
 
   user_data = base64encode("#!/bin/bash\n\necho \"ECS_CLUSTER=${aws_ecs_cluster.default.name}\" > /etc/ecs/ecs.config\n")
@@ -38,7 +41,9 @@ resource "aws_ecs_task_definition" "ctfd" {
 
       dockerLabels = {
         "traefik.enable"                                        = "true"
-        "traefik.http.routers.whoami.rule"                      = "Host(`whoami.osucyber.club`)"
+        "traefik.http.routers.whoami.rule"                      = "Host(`whoami.testing.osucyber.club`)"
+        "traefik.http.routers.whoami.entrypoints"               = "websecure"
+        "traefik.http.routers.whoami.tls.certResolver"          = "myresolver",
         "traefik.http.services.whoami.loadbalancer.server.port" = "32769"
       }
 
