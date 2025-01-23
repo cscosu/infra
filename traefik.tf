@@ -40,6 +40,24 @@ resource "aws_instance" "traefik" {
     #!/bin/bash
     echo "ECS_CLUSTER=${aws_ecs_cluster.default.name}" > /etc/ecs/ecs.config
 
+    cat <<EOF > /etc/systemd/system/mount-ebs.service
+    [Unit]
+    Description=Format and Mount Device
+    DefaultDependencies=no
+    Before=local-fs.target
+    Wants=local-fs.target
+
+    [Service]
+    Type=oneshot
+    ExecStartPre=/bin/bash -c '(while ! /usr/bin/lsblk -ln -o FSTYPE /dev/sdh 2>/dev/null; do echo "Waiting for block device /dev/sdh..."; sleep 2; done); sleep 2'
+    ExecStart=/bin/bash -c "if [ x`/usr/bin/lsblk -ln -o FSTYPE /dev/sdh` != 'ext4' ] ; then /usr/sbin/mkfs.ext4 -L certs /dev/sdh ; fi && /usr/bin/mkdir -p /certs && /usr/bin/mount /dev/sdh /certs"
+    ExecStop=/usr/bin/umount /certs
+    RemainAfterExit=yes
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
     echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
     sysctl -p
 
@@ -62,6 +80,8 @@ resource "aws_instance" "traefik" {
     EOF
 
     systemctl daemon-reload
+    systemctl enable mount-ebs
+    systemctl start mount-ebs
     systemctl enable nat-setup
     systemctl start nat-setup
     INIT
@@ -70,6 +90,18 @@ resource "aws_instance" "traefik" {
   tags = {
     Name = "${local.name}-ec2-traefik"
   }
+}
+
+resource "aws_ebs_volume" "certs" {
+  availability_zone = aws_instance.traefik.availability_zone
+  size              = 1
+  type              = "gp3"
+}
+
+resource "aws_volume_attachment" "certs" {
+  device_name = "/dev/sdh"
+  instance_id = aws_instance.traefik.id
+  volume_id   = aws_ebs_volume.certs.id
 }
 
 resource "aws_ecs_cluster" "default" {
@@ -104,6 +136,10 @@ resource "aws_ecs_task_definition" "traefik" {
           value = ":80"
         },
         {
+          name  = "TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO",
+          value = "websecure"
+        },
+        {
           name  = "TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS",
           value = ":443"
         },
@@ -132,12 +168,20 @@ resource "aws_ecs_task_definition" "traefik" {
           value = "cscosu@gmail.com"
         },
         {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_KEYTYPE",
+          value = "EC384"
+        },
+        {
           name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_HTTPCHALLENGE",
           value = "true"
         },
         {
           name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_HTTPCHALLENGE_ENTRYPOINT",
           value = "web"
+        },
+        {
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_STORAGE",
+          value = "/etc/traefik/acme/acme.json"
         }
       ]
 
@@ -167,6 +211,14 @@ resource "aws_ecs_task_definition" "traefik" {
       #     }
       #   }
 
+      mountPoints = [
+        {
+          sourceVolume  = "certs"
+          containerPath = "/etc/traefik/acme"
+          readOnly      = false
+        }
+      ]
+
       healthCheck = {
         retries = 3
         command = [
@@ -180,6 +232,11 @@ resource "aws_ecs_task_definition" "traefik" {
       stopTimeout = 300
     }
   ])
+
+  volume {
+    name      = "certs"
+    host_path = "/certs"
+  }
 
   requires_compatibilities = []
   tags                     = {}
