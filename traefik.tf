@@ -24,10 +24,9 @@ resource "aws_instance" "traefik" {
   instance_type               = "t4g.nano"
   subnet_id                   = aws_subnet.public.id
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
-  depends_on                  = [aws_internet_gateway.default]
   vpc_security_group_ids      = [aws_security_group.traefik.id]
   source_dest_check           = false
-  associate_public_ip_address = false
+  associate_public_ip_address = true
 
   instance_market_options {
     market_type = "spot"
@@ -91,10 +90,6 @@ resource "aws_ecs_task_definition" "traefik" {
         {
           name  = "TRAEFIK_PROVIDERS_ECS_CLUSTERS"
           value = aws_ecs_cluster.default.id,
-        },
-        {
-          name  = "TRAEFIK_PROVIDERS_ECS_AUTODISCOVERCLUSTERS"
-          value = "false",
         },
         {
           name  = "TRAEFIK_PROVIDERS_ECS_EXPOSEDBYDEFAULT",
@@ -191,7 +186,7 @@ resource "aws_ecs_task_definition" "traefik" {
 }
 
 resource "aws_ecs_service" "traefik" {
-  depends_on      = [aws_iam_role_policy.ecs_cluster_permissions, aws_instance.traefik, aws_ecs_cluster.default]
+  depends_on      = [aws_iam_role_policy.ecs_cluster_permissions]
   name            = "${local.name}-ecs-service-traefik"
   cluster         = aws_ecs_cluster.default.id
   task_definition = aws_ecs_task_definition.traefik.arn

@@ -3,7 +3,6 @@ resource "aws_instance" "ctfd" {
   instance_type               = "t4g.small"
   subnet_id                   = aws_subnet.default.id
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
-  depends_on                  = [aws_internet_gateway.default]
   vpc_security_group_ids      = [aws_security_group.ctfd.id]
   associate_public_ip_address = false
 
@@ -80,7 +79,7 @@ resource "aws_ecs_task_definition" "ctfd" {
 }
 
 resource "aws_ecs_service" "ctfd" {
-  depends_on      = [aws_iam_role_policy.ecs_cluster_permissions, aws_instance.ctfd, aws_ecs_cluster.default]
+  depends_on      = [aws_iam_role_policy.ecs_cluster_permissions]
   name            = "${local.name}-ecs-service-ctfd"
   cluster         = aws_ecs_cluster.default.id
   task_definition = aws_ecs_task_definition.ctfd.arn

@@ -32,8 +32,7 @@ resource "aws_subnet" "default" {
 }
 
 resource "aws_route_table" "default" {
-  vpc_id     = aws_vpc.default.id
-  depends_on = [aws_internet_gateway.default]
+  vpc_id = aws_vpc.default.id
 
   route {
     ipv6_cidr_block = "::/0"
