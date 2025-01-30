@@ -114,7 +114,7 @@ resource "aws_ecs_task_definition" "traefik" {
   container_definitions = jsonencode([
     {
       name              = "traefik"
-      image             = "arm64v8/traefik:v3.3.1"
+      image             = "arm64v8/traefik:v3.3.2"
       memoryReservation = 200
       essential         = true
 
@@ -156,12 +156,12 @@ resource "aws_ecs_task_definition" "traefik" {
           value = "15"
         },
         {
-          name  = "TRAEFIK_LOG_FILEPATH",
-          value = "/traefiklogs",
+          name  = "TRAEFIK_LOG_LEVEL",
+          value = "INFO",
         },
         {
-          name  = "TRAEFIK_LOG_LEVEL",
-          value = "TRACE",
+          name  = "TRAEFIK_LOG_FORMAT",
+          value = "json",
         },
         {
           name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_EMAIL",
@@ -202,14 +202,14 @@ resource "aws_ecs_task_definition" "traefik" {
         "traefik.http.middlewares.retry.retry.initialInterval" = "100ms"
       }
 
-      #   logConfiguration = {
-      #     logDriver = "awslogs"
-      #     options = {
-      #       "awslogs-group"         = aws_cloudwatch_log_group.cluster.name
-      #       "awslogs-region"        = locals.region,
-      #       "awslogs-stream-prefix" = "traefik"
-      #     }
-      #   }
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.default.name
+          "awslogs-region"        = local.region,
+          "awslogs-stream-prefix" = "traefik",
+        }
+      }
 
       mountPoints = [
         {
@@ -240,6 +240,11 @@ resource "aws_ecs_task_definition" "traefik" {
 
   requires_compatibilities = []
   tags                     = {}
+}
+
+resource "aws_cloudwatch_log_group" "default" {
+  name              = "/core"
+  retention_in_days = 90
 }
 
 resource "aws_ecs_service" "traefik" {
@@ -339,6 +344,9 @@ data "aws_iam_policy_document" "ecs_cluster_permissions" {
       "ecs:StartTelemetrySession",
       "ecs:SubmitContainerStateChange",
       "ecs:SubmitTaskStateChange",
+
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
 
       # SSM, AWS web UI shell
       "ssm:DescribeAssociation",
