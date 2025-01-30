@@ -132,6 +132,14 @@ resource "aws_ecs_task_definition" "traefik" {
           value = "true"
         },
         {
+          name  = "TRAEFIK_ACCESSLOG",
+          value = "true"
+        },
+        {
+          name  = "TRAEFIK_ACCESSLOG_FORMAT",
+          value = "json"
+        },
+        {
           name  = "TRAEFIK_ENTRYPOINTS_WEB_ADDRESS",
           value = ":80"
         },
@@ -145,7 +153,7 @@ resource "aws_ecs_task_definition" "traefik" {
         },
         {
           name  = "TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_CERTRESOLVER",
-          value = "myresolver"
+          value = "letsencrypt"
         },
         # {
         #   name  = "TRAEFIK_PROVIDERS_ECS_HEALTHYTASKSONLY",
@@ -164,23 +172,23 @@ resource "aws_ecs_task_definition" "traefik" {
           value = "json",
         },
         {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_EMAIL",
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL",
           value = "cscosu@gmail.com"
         },
         {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_KEYTYPE",
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_KEYTYPE",
           value = "EC384"
         },
         {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_HTTPCHALLENGE",
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE",
           value = "true"
         },
         {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_HTTPCHALLENGE_ENTRYPOINT",
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT",
           value = "web"
         },
         {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_MYRESOLVER_ACME_STORAGE",
+          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE",
           value = "/etc/traefik/acme/acme.json"
         }
       ]

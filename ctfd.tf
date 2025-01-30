@@ -29,7 +29,7 @@ resource "aws_instance" "ctfd" {
     [Service]
     Type=oneshot
     ExecStartPre=/bin/bash -c '(while ! /usr/bin/lsblk -ln -o FSTYPE /dev/sdh 2>/dev/null; do echo "Waiting for block device /dev/sdh..."; sleep 2; done); sleep 2'
-    ExecStart=/bin/bash -c "if [ x`/usr/bin/lsblk -ln -o FSTYPE /dev/sdh` != 'ext4' ] ; then /usr/sbin/mkfs.ext4 -L ctfd /dev/sdh ; fi && /usr/bin/mkdir -p /ctfd && /usr/bin/mount /dev/sdh /ctfd"
+    ExecStart=/bin/bash -c "if [ x`/usr/bin/lsblk -ln -o FSTYPE /dev/sdh` != 'ext4' ] ; then /usr/sbin/mkfs.ext4 -L ctfd /dev/sdh ; fi && /usr/bin/mkdir -p /ctfd && /usr/bin/mount /dev/sdh /ctfd && mkdir -p /ctfd/mariadb && chown 999:999 /ctfd/mariadb && mkdir -p /ctfd/ctfd && chown 1001:1001 /ctfd/ctfd"
     ExecStop=/usr/bin/umount /ctfd
     RemainAfterExit=yes
 
@@ -40,7 +40,6 @@ resource "aws_instance" "ctfd" {
     systemctl daemon-reload
     systemctl enable mount-ebs
     systemctl start mount-ebs
-
     INIT
   )
 
@@ -86,17 +85,16 @@ resource "aws_ecs_task_definition" "ctfd" {
       entryPoint = ["/bin/sh", "-c", "python3 -c \"import urllib.request; import zipfile; open('plugin.zip', 'wb').write(urllib.request.urlopen('https://github.com/cscosu/ctfd-writeups/archive/refs/heads/main.zip').read()); zipfile.ZipFile('plugin.zip', 'r').extractall('plugin')\" && cp -r plugin/ctfd-writeups-main/ctfd-writeups CTFd/plugins/ctfd-writeups && /opt/CTFd/docker-entrypoint.sh"]
 
       dockerLabels = {
-        "traefik.enable"                                      = "true"
-        "traefik.http.routers.ctfd.rule"                      = "Host(`ctfd.testing.osucyber.club`)"
-        "traefik.http.routers.ctfd.entrypoints"               = "websecure"
-        "traefik.http.routers.ctfd.tls.certResolver"          = "myresolver",
-        "traefik.http.services.ctfd.loadbalancer.server.port" = "32769"
+        "traefik.enable"                             = "true"
+        "traefik.http.routers.ctfd.rule"             = "Host(`bootcamp.testing.osucyber.club`)"
+        "traefik.http.routers.ctfd.entrypoints"      = "websecure"
+        "traefik.http.routers.ctfd.tls.certResolver" = "letsencrypt",
       }
 
       portMappings = [
         {
           containerPort = 8000
-          hostPort      = 32769
+          hostPort      = 0
           name          = "ctfd"
         }
       ]
@@ -273,6 +271,9 @@ resource "aws_ebs_volume" "ctfd" {
   availability_zone = aws_instance.ctfd.availability_zone
   size              = 20
   type              = "gp3"
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_volume_attachment" "ctfd" {
@@ -280,7 +281,6 @@ resource "aws_volume_attachment" "ctfd" {
   instance_id = aws_instance.ctfd.id
   volume_id   = aws_ebs_volume.ctfd.id
 }
-
 
 resource "aws_ecs_service" "ctfd" {
   depends_on      = [aws_iam_role_policy.ecs_cluster_permissions]
