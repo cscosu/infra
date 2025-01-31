@@ -29,7 +29,7 @@ resource "aws_instance" "ctfd" {
     [Service]
     Type=oneshot
     ExecStartPre=/bin/bash -c '(while ! /usr/bin/lsblk -ln -o FSTYPE /dev/sdh 2>/dev/null; do echo "Waiting for block device /dev/sdh..."; sleep 2; done); sleep 2'
-    ExecStart=/bin/bash -c "if [ x`/usr/bin/lsblk -ln -o FSTYPE /dev/sdh` != 'ext4' ] ; then /usr/sbin/mkfs.ext4 -L ctfd /dev/sdh ; fi && /usr/bin/mkdir -p /ctfd && /usr/bin/mount /dev/sdh /ctfd && mkdir -p /ctfd/mariadb && chown 999:999 /ctfd/mariadb && mkdir -p /ctfd/ctfd && chown 1001:1001 /ctfd/ctfd"
+    ExecStart=/bin/bash -c "if [ \"\$(lsblk -ln -o FSTYPE /dev/sdh)\" != \"ext4\" ]; then /usr/sbin/mkfs.ext4 -L ctfd /dev/sdh ; fi && /usr/bin/mkdir -p /ctfd && /usr/bin/mount /dev/sdh /ctfd ; /usr/bin/mkdir -p /ctfd/mariadb && /usr/bin/chown 999:999 /ctfd/mariadb && /usr/bin/mkdir -p /ctfd/ctfd && /usr/bin/chown 1001:1001 /ctfd/ctfd"
     ExecStop=/usr/bin/umount /ctfd
     RemainAfterExit=yes
 

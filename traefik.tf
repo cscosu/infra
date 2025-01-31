@@ -50,7 +50,7 @@ resource "aws_instance" "traefik" {
     [Service]
     Type=oneshot
     ExecStartPre=/bin/bash -c '(while ! /usr/bin/lsblk -ln -o FSTYPE /dev/sdh 2>/dev/null; do echo "Waiting for block device /dev/sdh..."; sleep 2; done); sleep 2'
-    ExecStart=/bin/bash -c "if [ x`/usr/bin/lsblk -ln -o FSTYPE /dev/sdh` != 'ext4' ] ; then /usr/sbin/mkfs.ext4 -L certs /dev/sdh ; fi && /usr/bin/mkdir -p /certs && /usr/bin/mount /dev/sdh /certs"
+    ExecStart=/bin/bash -c "if [ \"\$(lsblk -ln -o FSTYPE /dev/sdh)\" != \"ext4\" ]; then /usr/sbin/mkfs.ext4 -L certs /dev/sdh ; fi && /usr/bin/mkdir -p /certs && /usr/bin/mount /dev/sdh /certs"
     ExecStop=/usr/bin/umount /certs
     RemainAfterExit=yes
 
