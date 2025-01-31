@@ -10,3 +10,8 @@ provider "aws" {
   region  = local.region
   profile = "default"
 }
+
+resource "aws_cloudwatch_log_group" "default" {
+  name              = "/core"
+  retention_in_days = 90
+}

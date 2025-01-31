@@ -85,10 +85,11 @@ resource "aws_ecs_task_definition" "ctfd" {
       entryPoint = ["/bin/sh", "-c", "python3 -c \"import urllib.request; import zipfile; open('plugin.zip', 'wb').write(urllib.request.urlopen('https://github.com/cscosu/ctfd-writeups/archive/refs/heads/main.zip').read()); zipfile.ZipFile('plugin.zip', 'r').extractall('plugin')\" && cp -r plugin/ctfd-writeups-main/ctfd-writeups CTFd/plugins/ctfd-writeups && /opt/CTFd/docker-entrypoint.sh"]
 
       dockerLabels = {
-        "traefik.enable"                             = "true"
-        "traefik.http.routers.ctfd.rule"             = "Host(`bootcamp.testing.osucyber.club`)"
-        "traefik.http.routers.ctfd.entrypoints"      = "websecure"
-        "traefik.http.routers.ctfd.tls.certResolver" = "letsencrypt",
+        "traefik.enable"                               = "true"
+        "traefik.http.routers.ctfd.rule"               = "Host(`bootcamp.testing.osucyber.club`)"
+        "traefik.http.routers.ctfd.entrypoints"        = "websecure"
+        "traefik.http.routers.ctfd.tls.certResolver"   = "letsencrypt",
+        "traefik.http.routers.ctfd.tls.domains.0.main" = "*.testing.osucyber.club",
       }
 
       portMappings = [
@@ -262,9 +263,6 @@ resource "aws_ecs_task_definition" "ctfd" {
     name      = "mariadb"
     host_path = "/ctfd/mariadb"
   }
-
-  requires_compatibilities = []
-  tags                     = {}
 }
 
 resource "aws_ebs_volume" "ctfd" {
