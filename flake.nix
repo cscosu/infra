@@ -26,6 +26,7 @@
             terraform
             terraform-ls
             go-task
+            infracost
           ];
         };
       }

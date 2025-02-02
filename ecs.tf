@@ -1,4 +1,3 @@
-
 resource "aws_iam_instance_profile" "ecs_instance" {
   name = "${local.name}-iam-instance-profile-ecs-instance"
   role = aws_iam_role.ecs_instance.name
@@ -86,12 +85,12 @@ resource "aws_ecs_cluster" "default" {
   name = "${local.name}-cluster"
 }
 
-data "aws_ami" "ecs-optimized" {
+data "aws_ami" "minimal-arm64" {
   most_recent = true
   owners      = ["amazon"]
   filter {
     name   = "name"
-    values = ["amzn2-ami-ecs-hvm*"]
+    values = ["amzn2-ami-minimal-hvm*"]
   }
   filter {
     name   = "architecture"

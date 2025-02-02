@@ -1,10 +1,16 @@
 resource "aws_instance" "ctfd" {
-  ami                         = data.aws_ami.ecs-optimized.id
+  ami                         = data.aws_ami.minimal-arm64.id
+  availability_zone           = local.availability_zone
   instance_type               = "t4g.small"
   subnet_id                   = aws_subnet.default.id
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
   vpc_security_group_ids      = [aws_security_group.ctfd.id]
   associate_public_ip_address = false
+
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 4
+  }
 
   instance_market_options {
     market_type = "spot"
@@ -16,7 +22,13 @@ resource "aws_instance" "ctfd" {
 
   user_data = base64encode(<<-INIT
     #!/bin/bash
-    
+    yum install -y amazon-ssm-agent
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
+
+    amazon-linux-extras disable docker
+    amazon-linux-extras enable ecs
+    yum install -y ecs-init tc
     echo "ECS_CLUSTER=${aws_ecs_cluster.default.name}" > /etc/ecs/ecs.config
 
     cat <<EOF > /etc/systemd/system/mount-ebs.service
@@ -40,6 +52,8 @@ resource "aws_instance" "ctfd" {
     systemctl daemon-reload
     systemctl enable mount-ebs
     systemctl start mount-ebs
+    systemctl enable ecs
+    systemctl start --no-block ecs
     INIT
   )
 
@@ -101,30 +115,12 @@ resource "aws_ecs_task_definition" "ctfd" {
       ]
 
       environment = [
-        {
-          name  = "SECRET_KEY",
-          value = random_password.ctfd_jwt_secret_key.result,
-        },
-        {
-          name  = "UPLOAD_FOLDER"
-          value = "/ctfd/uploads",
-        },
-        {
-          name  = "LOG_FOLDER"
-          value = "/ctfd/logs",
-        },
-        {
-          name  = "REVERSE_PROXY",
-          value = "true",
-        },
-        {
-          name  = "DATABASE_URL",
-          value = "mysql+pymysql://ctfd:ctfd@mariadb/ctfd",
-        },
-        {
-          name  = "REDIS_URL",
-          value = "redis://redis:6379",
-        }
+        { name = "SECRET_KEY", value = random_password.ctfd_jwt_secret_key.result },
+        { name = "UPLOAD_FOLDER", value = "/ctfd/uploads" },
+        { name = "LOG_FOLDER", value = "/ctfd/logs" },
+        { name = "REVERSE_PROXY", value = "true" },
+        { name = "DATABASE_URL", value = "mysql+pymysql://ctfd:ctfd@mariadb/ctfd" },
+        { name = "REDIS_URL", value = "redis://redis:6379" },
       ]
 
       healthCheck = {
@@ -196,26 +192,11 @@ resource "aws_ecs_task_definition" "ctfd" {
       ]
 
       environment = [
-        {
-          name  = "MARIADB_ROOT_PASSWORD",
-          value = "ctfd",
-        },
-        {
-          name  = "MARIADB_USER",
-          value = "ctfd",
-        },
-        {
-          name  = "MARIADB_PASSWORD",
-          value = "ctfd",
-        },
-        {
-          name  = "MARIADB_DATABASE",
-          value = "ctfd",
-        },
-        {
-          name  = "MARIADB_AUTO_UPGRADE",
-          value = "1",
-        },
+        { name = "MARIADB_ROOT_PASSWORD", value = "ctfd" },
+        { name = "MARIADB_USER", value = "ctfd" },
+        { name = "MARIADB_PASSWORD", value = "ctfd" },
+        { name = "MARIADB_DATABASE", value = "ctfd" },
+        { name = "MARIADB_AUTO_UPGRADE", value = "1" },
       ]
 
       mountPoints = [
@@ -266,18 +247,19 @@ resource "aws_ecs_task_definition" "ctfd" {
 }
 
 resource "aws_ebs_volume" "ctfd" {
-  availability_zone = aws_instance.ctfd.availability_zone
+  availability_zone = local.availability_zone
   size              = 20
   type              = "gp3"
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
 
 resource "aws_volume_attachment" "ctfd" {
-  device_name = "/dev/sdh"
-  instance_id = aws_instance.ctfd.id
-  volume_id   = aws_ebs_volume.ctfd.id
+  device_name  = "/dev/sdh"
+  instance_id  = aws_instance.ctfd.id
+  volume_id    = aws_ebs_volume.ctfd.id
+  force_detach = true
 }
 
 resource "aws_ecs_service" "ctfd" {

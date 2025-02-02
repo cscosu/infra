@@ -7,13 +7,19 @@ resource "aws_eip" "traefik" {
 }
 
 resource "aws_instance" "traefik" {
-  ami                         = data.aws_ami.ecs-optimized.id
+  ami                         = data.aws_ami.minimal-arm64.id
+  availability_zone           = local.availability_zone
   instance_type               = "t4g.nano"
   subnet_id                   = aws_subnet.public.id
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
   vpc_security_group_ids      = [aws_security_group.traefik.id]
   source_dest_check           = false
   associate_public_ip_address = true
+
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 4
+  }
 
   instance_market_options {
     market_type = "spot"
@@ -25,6 +31,13 @@ resource "aws_instance" "traefik" {
 
   user_data = base64encode(<<-INIT
     #!/bin/bash
+    yum install -y amazon-ssm-agent
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
+
+    amazon-linux-extras disable docker
+    amazon-linux-extras enable ecs
+    yum install -y ecs-init tc
     echo "ECS_CLUSTER=${aws_ecs_cluster.default.name}" > /etc/ecs/ecs.config
 
     cat <<EOF > /etc/systemd/system/mount-ebs.service
@@ -71,6 +84,8 @@ resource "aws_instance" "traefik" {
     systemctl start mount-ebs
     systemctl enable nat-setup
     systemctl start nat-setup
+    systemctl enable ecs
+    systemctl start --no-block ecs
     INIT
   )
 
@@ -80,7 +95,7 @@ resource "aws_instance" "traefik" {
 }
 
 resource "aws_ebs_volume" "certs" {
-  availability_zone = aws_instance.traefik.availability_zone
+  availability_zone = local.availability_zone
   size              = 1
   type              = "gp3"
 }
@@ -103,78 +118,24 @@ resource "aws_ecs_task_definition" "traefik" {
       essential         = true
 
       environment = [
-        {
-          name  = "TRAEFIK_PROVIDERS_ECS_CLUSTERS"
-          value = aws_ecs_cluster.default.id,
-        },
-        {
-          name  = "TRAEFIK_PROVIDERS_ECS_EXPOSEDBYDEFAULT",
-          value = "false",
-        },
-        {
-          name  = "TRAEFIK_PING",
-          value = "true"
-        },
-        {
-          name  = "TRAEFIK_ACCESSLOG",
-          value = "true"
-        },
-        {
-          name  = "TRAEFIK_ACCESSLOG_FORMAT",
-          value = "json"
-        },
-        {
-          name  = "TRAEFIK_ENTRYPOINTS_WEB_ADDRESS",
-          value = ":80"
-        },
-        {
-          name  = "TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO",
-          value = "websecure"
-        },
-        {
-          name  = "TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS",
-          value = ":443"
-        },
-        {
-          name  = "TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_CERTRESOLVER",
-          value = "letsencrypt"
-        },
-        # {
-        #   name  = "TRAEFIK_PROVIDERS_ECS_HEALTHYTASKSONLY",
-        #   value = "true"
-        # },
-        {
-          name  = "TRAEFIK_PROVIDERS_ECS_REFRESHSECONDS",
-          value = "15"
-        },
-        {
-          name  = "TRAEFIK_LOG_LEVEL",
-          value = "INFO",
-        },
-        {
-          name  = "TRAEFIK_LOG_FORMAT",
-          value = "json",
-        },
-        {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL",
-          value = "cscosu@gmail.com"
-        },
-        {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_KEYTYPE",
-          value = "EC384"
-        },
-        {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_DNSCHALLENGE_PROVIDER",
-          value = "route53"
-        },
-        {
-          name  = "AWS_DEFAULT_REGION",
-          value = local.region
-        },
-        {
-          name  = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE",
-          value = "/etc/traefik/acme/acme.json"
-        }
+        { name = "AWS_DEFAULT_REGION", value = local.region },
+        { name = "TRAEFIK_PROVIDERS_ECS_CLUSTERS", value = aws_ecs_cluster.default.id },
+        { name = "TRAEFIK_PROVIDERS_ECS_EXPOSEDBYDEFAULT", value = "false" },
+        { name = "TRAEFIK_PROVIDERS_ECS_REFRESHSECONDS", value = "15" },
+        # { name = "TRAEFIK_PROVIDERS_ECS_HEALTHYTASKSONLY", value = "true" },
+        { name = "TRAEFIK_PING", value = "true" },
+        { name = "TRAEFIK_LOG_LEVEL", value = "INFO" },
+        { name = "TRAEFIK_LOG_FORMAT", value = "json" },
+        { name = "TRAEFIK_ACCESSLOG", value = "true" },
+        { name = "TRAEFIK_ACCESSLOG_FORMAT", value = "json" },
+        { name = "TRAEFIK_ENTRYPOINTS_WEB_ADDRESS", value = ":80" },
+        { name = "TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO", value = "websecure" },
+        { name = "TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS", value = ":443" },
+        { name = "TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_CERTRESOLVER", value = "letsencrypt" },
+        { name = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL", value = "cscosu@gmail.com" },
+        { name = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_KEYTYPE", value = "EC384" },
+        { name = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_DNSCHALLENGE_PROVIDER", value = "route53" },
+        { name = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE", value = "/etc/traefik/acme/acme.json" },
       ]
 
       portMappings = [
