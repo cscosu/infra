@@ -117,12 +117,6 @@ resource "aws_ecs_task_definition" "traefik" {
         },
       ]
 
-      dockerLabels = {
-        "traefik.enable"                                       = "true"
-        "traefik.http.middlewares.retry.retry.attempts"        = "4"
-        "traefik.http.middlewares.retry.retry.initialInterval" = "100ms"
-      }
-
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -225,17 +219,6 @@ data "aws_iam_policy_document" "assume_role_policy" {
     }
   }
 }
-
-# resource "aws_iam_policy_attachment" "traefik" {
-#   name       = "iam-policy-attachment-traefik"
-#   roles      = [aws_iam_role.task_role.name]
-#   policy_arn = aws_iam_policy.traefik.arn
-# }
-
-# resource "aws_iam_policy" "traefik" {
-#   name   = "iam-policy-traefik"
-#   policy = data.aws_iam_policy_document.traefik.json
-# }
 
 resource "aws_iam_role_policy" "traefik" {
   role   = aws_iam_role.task_role.id

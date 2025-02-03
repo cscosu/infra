@@ -211,7 +211,7 @@ resource "aws_ecs_task_definition" "ctfd" {
         retries = 3
         command = [
           "CMD-SHELL",
-          "true"
+          "healthcheck.sh --connect --innodb_initialized"
         ]
         timeout  = 3
         interval = 10

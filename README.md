@@ -25,6 +25,7 @@
 - Least privileges
     - Use IAM to scope permissions as tightly as possible.
     - Allow only the ports you need through security groups.
+    - Avoid baking secrets.
 
 ## Infrastructure Diagram
 
