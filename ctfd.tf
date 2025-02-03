@@ -250,9 +250,9 @@ resource "aws_ebs_volume" "ctfd" {
   availability_zone = local.availability_zone
   size              = 20
   type              = "gp3"
-  # lifecycle {
-  #   prevent_destroy = true
-  # }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_volume_attachment" "ctfd" {
