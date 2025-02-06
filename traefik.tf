@@ -21,14 +21,6 @@ resource "aws_instance" "traefik" {
     volume_size = 4
   }
 
-  instance_market_options {
-    market_type = "spot"
-    spot_options {
-      instance_interruption_behavior = "stop"
-      spot_instance_type             = "persistent"
-    }
-  }
-
   user_data = base64encode(<<-INIT
     #!/bin/bash
     yum install -y amazon-ssm-agent
@@ -81,7 +73,7 @@ resource "aws_ecs_task_definition" "traefik" {
   container_definitions = jsonencode([
     {
       name              = "traefik"
-      image             = "arm64v8/traefik:v3.3.2"
+      image             = "traefik:v3.3.3"
       memoryReservation = 200
       essential         = true
 
@@ -116,6 +108,21 @@ resource "aws_ecs_task_definition" "traefik" {
           hostPort      = 443
         },
       ]
+
+      dockerLabels = {
+        "traefik.enable" = "true"
+
+        "traefik.http.routers.catchall.rule"                                  = "HostRegexp(`^.+\\.testing\\.osucyber\\.club$`)"
+        "traefik.http.routers.catchall.priority"                              = "1"
+        "traefik.http.routers.catchall.middlewares"                           = "redirect-to-main"
+        "traefik.http.middlewares.redirect-to-main.redirectregex.regex"       = ".*"
+        "traefik.http.middlewares.redirect-to-main.redirectregex.replacement" = "https://osucyber.club"
+
+        "traefik.http.routers.discord.rule"                                   = "Host(`discord.testing.osucyber.club`)"
+        "traefik.http.routers.discord.middlewares"                            = "redirect-discord"
+        "traefik.http.middlewares.redirect-discord.redirectregex.regex"       = ".*"
+        "traefik.http.middlewares.redirect-discord.redirectregex.replacement" = "https://discord.com"
+      }
 
       logConfiguration = {
         logDriver = "awslogs"
