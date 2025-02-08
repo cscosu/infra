@@ -118,10 +118,22 @@ resource "aws_ecs_task_definition" "traefik" {
         "traefik.http.middlewares.redirect-to-main.redirectregex.regex"       = ".*"
         "traefik.http.middlewares.redirect-to-main.redirectregex.replacement" = "https://osucyber.club"
 
-        "traefik.http.routers.discord.rule"                                   = "Host(`discord.testing.osucyber.club`)"
-        "traefik.http.routers.discord.middlewares"                            = "redirect-discord"
-        "traefik.http.middlewares.redirect-discord.redirectregex.regex"       = ".*"
-        "traefik.http.middlewares.redirect-discord.redirectregex.replacement" = "https://discord.com"
+        "traefik.http.routers.discord.rule"                                       = "Host(`discord.testing.osucyber.club`)"
+        "traefik.http.routers.discord.middlewares"                                = "redirect-discord"
+        "traefik.http.middlewares.redirect-discord.redirectregex.regex"           = ".*"
+        "traefik.http.middlewares.redirect-discord.redirectregex.replacement"     = "https://discord.gg/x4VgQBTBCp"
+        "traefik.http.routers.zoom.rule"                                          = "Host(`zoom.testing.osucyber.club`)"
+        "traefik.http.routers.zoom.middlewares"                                   = "redirect-zoom"
+        "traefik.http.middlewares.redirect-zoom.redirectregex.regex"              = ".*"
+        "traefik.http.middlewares.redirect-zoom.redirectregex.replacement"        = "https://osu.zoom.us/j/94385413286?pwd=L2pHUEc0blZqV0Erc3pNeWxRTW4vUT09"
+        "traefik.http.routers.mailinglist.rule"                                   = "Host(`mailinglist.testing.osucyber.club`)"
+        "traefik.http.routers.mailinglist.middlewares"                            = "redirect-mailinglist"
+        "traefik.http.middlewares.redirect-mailinglist.redirectregex.regex"       = ".*"
+        "traefik.http.middlewares.redirect-mailinglist.redirectregex.replacement" = "https://eepurl.com/c0qMHn"
+        "traefik.http.routers.attend.rule"                                        = "Host(`attend.testing.osucyber.club`)"
+        "traefik.http.routers.attend.middlewares"                                 = "redirect-attend"
+        "traefik.http.middlewares.redirect-attend.redirectregex.regex"            = ".*"
+        "traefik.http.middlewares.redirect-attend.redirectregex.replacement"      = "https://auth.osucyber.club"
       }
 
       logConfiguration = {

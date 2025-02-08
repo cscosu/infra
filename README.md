@@ -37,6 +37,12 @@
 
 This is a log of important decisions made to the infrastructure, reasoning why a decision was made, and why other options were not chosen. Minor changes, like deploying an extra container, do not necessarily need to be a part of the decisions log. However, changes to the _way_ the infrastructure works should be documented here for future generations.
 
+### 2025-02-05: Traefik for redirects
+
+Use Traefik docker labels for redirects. That is, all subdomains should redirect to [osucyber.club](https://osucyber.club) if they are no used by anything else. Also, certain subdomains like [discord.osucyber.club](https://discord.osucyber.club) should go to a Discord invite link. An alternative (which was used before) was to have an API Gateway in front of a Lambda function which handles redirects. However, this introduces more complexity and adds more resources added to Terraform. Using Traefik is more native since we already have it, and it requires only a small amount of configuration. Though, if Traefik is down, the redirects will stop working. Both options are free of cost, so we choose the most minimal option.
+
+First introduced in [77d1d881](https://github.com/cscosu/infra2/commit/77d1d8816cf29184120fc5c5df5193bd379b3052).
+
 ### 2025-02-02: Minimize root disk space
 
 Use minimal AMI instead of ECS optimized AMI. The ECS optimized AMI requires a minimum of a 30GB root volume, however we really only need a 4GB root volume. At $0.08/GB/month, this means $2.08/instance/month saved. The ECS agent cleans up old images every 30 minutes by default ([docs](https://github.com/aws/amazon-ecs-agent/blob/0f876b5372c9ecb15228f607f11d2c4be629d364/README.md#L206)), so there is little reason to worry about running out of storage. Additionally, it is easy to change the root storage if needed by just modifying the Terraform. This comes at a maintenance cost of additional user data script to install the required agents, though this should be just copy/paste.
