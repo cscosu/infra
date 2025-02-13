@@ -15,6 +15,7 @@ resource "aws_instance" "traefik" {
   vpc_security_group_ids      = [aws_security_group.traefik.id]
   source_dest_check           = false
   associate_public_ip_address = true
+  user_data_replace_on_change = true
 
   root_block_device {
     volume_type = "gp3"

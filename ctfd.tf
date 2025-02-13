@@ -6,6 +6,7 @@ resource "aws_instance" "ctfd" {
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
   vpc_security_group_ids      = [aws_security_group.ctfd.id]
   associate_public_ip_address = false
+  user_data_replace_on_change = true
 
   root_block_device {
     volume_type = "gp3"
@@ -127,7 +128,7 @@ resource "aws_ecs_task_definition" "ctfd" {
         retries = 3
         command = [
           "CMD-SHELL",
-          "true"
+          "python3 -c 'import urllib.request; exit(0 if urllib.request.urlopen(\"http://localhost:8000/healthcheck\", timeout=5).status == 200 else 1)'"
         ]
         timeout  = 3
         interval = 10

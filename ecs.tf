@@ -32,13 +32,12 @@ data "aws_iam_policy_document" "ecs_cluster_permissions" {
     effect = "Allow"
     actions = [
       # AWS ECS Agent
-      "ecs:DeregisterContainerInstance",
       "ecs:DiscoverPollEndpoint",
       "ecs:Poll",
-      "ecs:RegisterContainerInstance",
       "ecs:StartTelemetrySession",
-      "ecs:SubmitContainerStateChange",
-      "ecs:SubmitTaskStateChange",
+
+      # Allow downloading images from private ECR
+      "ecr:GetAuthorizationToken",
 
       "logs:CreateLogStream",
       "logs:PutLogEvents",
@@ -69,16 +68,31 @@ data "aws_iam_policy_document" "ecs_cluster_permissions" {
     ]
   }
 
-  #   statement {
-  #     effect = "Allow"
-  #     actions = [
-  #       "logs:CreateLogStream",
-  #       "logs:PutLogEvents",
-  #     ]
-  #     resources = [
-  #       "arn:aws:logs:*:*:*"
-  #     ]
-  #   }
+  # Allow downloading images from private ECR
+  statement {
+    effect = "Allow"
+    actions = [
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer",
+    ]
+    resources = [
+      aws_ecr_repository.default.arn
+    ]
+  }
+
+  # AWS ECS Agent
+  statement {
+    effect = "Allow"
+    actions = [
+      "ecs:DeregisterContainerInstance",
+      "ecs:RegisterContainerInstance",
+      "ecs:SubmitContainerStateChange",
+      "ecs:SubmitTaskStateChange",
+    ]
+    resources = [
+      aws_ecs_cluster.default.arn
+    ]
+  }
 }
 
 resource "aws_ecs_cluster" "default" {
