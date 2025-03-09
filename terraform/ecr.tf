@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "default" {
-  name = "${local.name}-ecr"
+  name = local.name
 }
 
 resource "aws_ecr_lifecycle_policy" "default" {
@@ -8,16 +8,16 @@ resource "aws_ecr_lifecycle_policy" "default" {
   policy = jsonencode({
     "rules" : [
       {
-        rulePriority = 1,
-        description  = "Expire untagged images older than 14 days",
+        rulePriority = 1
+        description  = "Expire untagged images older than 14 days"
         selection = {
-          tagStatus   = "untagged",
-          countType   = "sinceImagePushed",
-          countUnit   = "days",
-          countNumber = 14,
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 14
         },
         action = {
-          type = "expire",
+          type = "expire"
         }
       }
     ]

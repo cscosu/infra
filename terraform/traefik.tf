@@ -2,8 +2,9 @@ resource "aws_eip" "traefik" {
   instance = aws_instance.traefik.id
   domain   = "vpc"
   tags = {
-    Name = "traefik-eip-${terraform.workspace}"
+    Name = "${local.name}-traefik"
   }
+  depends_on = [ aws_internet_gateway.default ]
 }
 
 resource "aws_instance" "traefik" {
@@ -14,7 +15,7 @@ resource "aws_instance" "traefik" {
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
   vpc_security_group_ids      = [aws_security_group.traefik.id]
   source_dest_check           = false
-  associate_public_ip_address = true
+  associate_public_ip_address = false
   user_data_replace_on_change = true
 
   root_block_device {
@@ -63,13 +64,13 @@ resource "aws_instance" "traefik" {
   )
 
   tags = {
-    Name = "${local.name}-ec2-traefik"
+    Name = "${local.name}-traefik"
   }
 }
 
 resource "aws_ecs_task_definition" "traefik" {
-  family        = "${local.name}-ecs-task-definition-traefik"
-  task_role_arn = aws_iam_role.task_role.arn
+  family        = "${local.name}-traefik"
+  task_role_arn = aws_iam_role.traefik.arn
 
   container_definitions = jsonencode([
     {
@@ -176,7 +177,7 @@ resource "aws_ecs_task_definition" "traefik" {
 
 resource "aws_ecs_service" "traefik" {
   depends_on      = [aws_iam_role_policy.ecs_cluster_permissions]
-  name            = "${local.name}-ecs-service-traefik"
+  name            = "${local.name}-traefik"
   cluster         = aws_ecs_cluster.default.id
   task_definition = aws_ecs_task_definition.traefik.arn
   desired_count   = 1
@@ -188,7 +189,7 @@ resource "aws_ecs_service" "traefik" {
 }
 
 resource "aws_security_group" "traefik" {
-  name   = "${local.name}-sg-traefik"
+  name   = "${local.name}-traefik"
   vpc_id = aws_vpc.default.id
 
   ingress {
@@ -223,8 +224,8 @@ resource "aws_security_group" "traefik" {
   }
 }
 
-resource "aws_iam_role" "task_role" {
-  name               = "${local.name}-task-role"
+resource "aws_iam_role" "traefik" {
+  name               = "${local.name}-traefik"
   assume_role_policy = data.aws_iam_policy_document.assume_role_policy.json
 }
 
@@ -241,7 +242,7 @@ data "aws_iam_policy_document" "assume_role_policy" {
 }
 
 resource "aws_iam_role_policy" "traefik" {
-  role   = aws_iam_role.task_role.id
+  role   = aws_iam_role.traefik.id
   policy = data.aws_iam_policy_document.traefik.json
 }
 
@@ -315,7 +316,7 @@ data "aws_iam_policy_document" "traefik" {
   }
 }
 
-resource "aws_route53_record" "wildcard_domain_record" {
+resource "aws_route53_record" "wildcard_a" {
   count   = 1
   zone_id = local.domain_zone_id
   name    = "*.testing.${local.domain}"

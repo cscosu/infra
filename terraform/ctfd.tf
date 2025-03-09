@@ -2,7 +2,7 @@ resource "aws_instance" "ctfd" {
   ami                         = data.aws_ami.minimal-arm64.id
   availability_zone           = local.availability_zone
   instance_type               = "t4g.small"
-  subnet_id                   = aws_subnet.default.id
+  subnet_id                   = aws_subnet.private.id
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
   vpc_security_group_ids      = [aws_security_group.ctfd.id]
   associate_public_ip_address = false
@@ -59,7 +59,7 @@ resource "aws_instance" "ctfd" {
   )
 
   tags = {
-    Name = "${local.name}-ec2-ctfd"
+    Name = "${local.name}-ctfd"
   }
 }
 
@@ -68,7 +68,7 @@ resource "random_password" "ctfd_jwt_secret_key" {
 }
 
 resource "aws_ecs_task_definition" "ctfd" {
-  family = "${local.name}-ecs-task-definition-ctfd"
+  family = "${local.name}-ctfd"
 
   container_definitions = jsonencode([
     {
@@ -103,8 +103,8 @@ resource "aws_ecs_task_definition" "ctfd" {
         "traefik.enable"                               = "true"
         "traefik.http.routers.ctfd.rule"               = "Host(`bootcamp.testing.osucyber.club`)"
         "traefik.http.routers.ctfd.entrypoints"        = "websecure"
-        "traefik.http.routers.ctfd.tls.certResolver"   = "letsencrypt",
-        "traefik.http.routers.ctfd.tls.domains.0.main" = "*.testing.osucyber.club",
+        "traefik.http.routers.ctfd.tls.certResolver"   = "letsencrypt"
+        "traefik.http.routers.ctfd.tls.domains.0.main" = "*.testing.osucyber.club"
       }
 
       portMappings = [
@@ -138,8 +138,8 @@ resource "aws_ecs_task_definition" "ctfd" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.default.name
-          "awslogs-region"        = local.region,
-          "awslogs-stream-prefix" = "ctfd",
+          "awslogs-region"        = local.region
+          "awslogs-stream-prefix" = "ctfd"
         }
       }
 
@@ -172,8 +172,8 @@ resource "aws_ecs_task_definition" "ctfd" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.default.name
-          "awslogs-region"        = local.region,
-          "awslogs-stream-prefix" = "ctfd",
+          "awslogs-region"        = local.region
+          "awslogs-stream-prefix" = "ctfd"
         }
       }
 
@@ -222,8 +222,8 @@ resource "aws_ecs_task_definition" "ctfd" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.default.name
-          "awslogs-region"        = local.region,
-          "awslogs-stream-prefix" = "ctfd",
+          "awslogs-region"        = local.region
+          "awslogs-stream-prefix" = "ctfd"
         }
       }
 
@@ -265,7 +265,7 @@ resource "aws_volume_attachment" "ctfd" {
 
 resource "aws_ecs_service" "ctfd" {
   depends_on      = [aws_iam_role_policy.ecs_cluster_permissions]
-  name            = "${local.name}-ecs-service-ctfd"
+  name            = "${local.name}-ctfd"
   cluster         = aws_ecs_cluster.default.id
   task_definition = aws_ecs_task_definition.ctfd.arn
   desired_count   = 1
@@ -277,7 +277,7 @@ resource "aws_ecs_service" "ctfd" {
 }
 
 resource "aws_security_group" "ctfd" {
-  name   = "${local.name}-sg-ctfd"
+  name   = "${local.name}-ctfd"
   vpc_id = aws_vpc.default.id
 
   ingress {

@@ -2,7 +2,7 @@ resource "aws_instance" "auth" {
   ami                         = data.aws_ami.minimal-arm64.id
   availability_zone           = local.availability_zone
   instance_type               = "t4g.nano"
-  subnet_id                   = aws_subnet.default.id
+  subnet_id                   = aws_subnet.private.id
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
   vpc_security_group_ids      = [aws_security_group.auth.id]
   associate_public_ip_address = false
@@ -59,17 +59,17 @@ resource "aws_instance" "auth" {
   )
 
   tags = {
-    Name = "${local.name}-ec2-auth"
+    Name = "${local.name}-auth"
   }
 }
 
 resource "aws_ecs_task_definition" "auth" {
-  family = "${local.name}-ecs-task-definition-auth"
+  family = "${local.name}-auth"
 
   container_definitions = jsonencode([
     {
       name              = "auth"
-      image             = "749980637880.dkr.ecr.us-east-2.amazonaws.com/infra2-ecr:auth2"
+      image             = "${aws_ecr_repository.default.repository_url}:auth2"
       memoryReservation = 200
 
       mountPoints = [
@@ -84,8 +84,8 @@ resource "aws_ecs_task_definition" "auth" {
         "traefik.enable"                               = "true"
         "traefik.http.routers.auth.rule"               = "Host(`auth.testing.osucyber.club`)"
         "traefik.http.routers.auth.entrypoints"        = "websecure"
-        "traefik.http.routers.auth.tls.certResolver"   = "letsencrypt",
-        "traefik.http.routers.auth.tls.domains.0.main" = "*.testing.osucyber.club",
+        "traefik.http.routers.auth.tls.certResolver"   = "letsencrypt"
+        "traefik.http.routers.auth.tls.domains.0.main" = "*.testing.osucyber.club"
       }
 
       portMappings = [
@@ -114,8 +114,8 @@ resource "aws_ecs_task_definition" "auth" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.default.name
-          "awslogs-region"        = local.region,
-          "awslogs-stream-prefix" = "auth",
+          "awslogs-region"        = local.region
+          "awslogs-stream-prefix" = "auth"
         }
       }
 
@@ -147,7 +147,7 @@ resource "aws_volume_attachment" "auth" {
 
 resource "aws_ecs_service" "auth" {
   depends_on      = [aws_iam_role_policy.ecs_cluster_permissions]
-  name            = "${local.name}-ecs-service-auth"
+  name            = "${local.name}-auth"
   cluster         = aws_ecs_cluster.default.id
   task_definition = aws_ecs_task_definition.auth.arn
   desired_count   = 1
@@ -159,7 +159,7 @@ resource "aws_ecs_service" "auth" {
 }
 
 resource "aws_security_group" "auth" {
-  name   = "${local.name}-sg-auth"
+  name   = "${local.name}-auth"
   vpc_id = aws_vpc.default.id
 
   ingress {

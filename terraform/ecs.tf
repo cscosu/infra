@@ -1,15 +1,15 @@
 resource "aws_iam_instance_profile" "ecs_instance" {
-  name = "${local.name}-iam-instance-profile-ecs-instance"
+  name = "${local.name}-ecs-instance"
   role = aws_iam_role.ecs_instance.name
 }
 
 resource "aws_iam_role" "ecs_instance" {
-  name               = "${local.name}-iam-role-ecs-instance"
+  name               = "${local.name}-ecs-instance"
   assume_role_policy = data.aws_iam_policy_document.ecs_instance.json
 }
 
 resource "aws_iam_role_policy" "ecs_cluster_permissions" {
-  name   = "${local.name}-iam-role-policy-ecs-cluster-permissions"
+  name   = "${local.name}-ecs-cluster-permissions"
   role   = aws_iam_role.ecs_instance.id
   policy = data.aws_iam_policy_document.ecs_cluster_permissions.json
 }
@@ -61,7 +61,7 @@ data "aws_iam_policy_document" "ecs_cluster_permissions" {
       "ssmmessages:CreateControlChannel",
       "ssmmessages:CreateDataChannel",
       "ssmmessages:OpenControlChannel",
-      "ssmmessages:OpenDataChannel"
+      "ssmmessages:OpenDataChannel",
     ]
     resources = [
       "*"
@@ -96,7 +96,7 @@ data "aws_iam_policy_document" "ecs_cluster_permissions" {
 }
 
 resource "aws_ecs_cluster" "default" {
-  name = "${local.name}-cluster"
+  name = local.name
 }
 
 data "aws_ami" "minimal-arm64" {
