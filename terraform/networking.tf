@@ -1,7 +1,8 @@
 resource "aws_vpc" "default" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
+  cidr_block                       = "10.0.0.0/16"
+  assign_generated_ipv6_cidr_block = true
+  enable_dns_support               = true
+  enable_dns_hostnames             = true
 
   tags = {
     Name = local.name
@@ -17,9 +18,10 @@ resource "aws_internet_gateway" "default" {
 }
 
 resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.default.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = local.availability_zone
+  vpc_id            = aws_vpc.default.id
+  cidr_block        = "10.0.1.0/24"
+  ipv6_cidr_block   = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 1)
+  availability_zone = local.availability_zone
 
   tags = {
     Name = "${local.name}-public"
@@ -30,13 +32,13 @@ resource "aws_route_table" "public" {
   vpc_id = aws_vpc.default.id
 
   route {
-    ipv6_cidr_block = "::/0"
-    gateway_id      = aws_internet_gateway.default.id
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.default.id
   }
 
   route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.default.id
+    ipv6_cidr_block = "::/0"
+    gateway_id      = aws_internet_gateway.default.id
   }
 
   tags = {
@@ -50,9 +52,10 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_subnet" "private" {
-  vpc_id                  = aws_vpc.default.id
-  cidr_block              = "10.0.0.0/24"
-  availability_zone       = local.availability_zone
+  vpc_id            = aws_vpc.default.id
+  cidr_block        = "10.0.0.0/24"
+  ipv6_cidr_block   = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 0)
+  availability_zone = local.availability_zone
 
   tags = {
     Name = "${local.name}-private"
@@ -70,6 +73,11 @@ resource "aws_route_table" "private" {
   # already has a public IP.
   route {
     cidr_block           = "0.0.0.0/0"
+    network_interface_id = aws_instance.traefik.primary_network_interface_id
+  }
+
+  route {
+    ipv6_cidr_block      = "::/0"
     network_interface_id = aws_instance.traefik.primary_network_interface_id
   }
 

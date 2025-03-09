@@ -4,7 +4,7 @@ resource "aws_eip" "traefik" {
   tags = {
     Name = "${local.name}-traefik"
   }
-  depends_on = [ aws_internet_gateway.default ]
+  depends_on = [aws_internet_gateway.default]
 }
 
 resource "aws_instance" "traefik" {
@@ -15,8 +15,9 @@ resource "aws_instance" "traefik" {
   iam_instance_profile        = aws_iam_instance_profile.ecs_instance.name
   vpc_security_group_ids      = [aws_security_group.traefik.id]
   source_dest_check           = false
-  associate_public_ip_address = false
+  associate_public_ip_address = true
   user_data_replace_on_change = true
+  ipv6_addresses              = [cidrhost(aws_subnet.public.ipv6_cidr_block, 4)]
 
   root_block_device {
     volume_type = "gp3"
@@ -35,6 +36,7 @@ resource "aws_instance" "traefik" {
     echo "ECS_CLUSTER=${aws_ecs_cluster.default.name}" > /etc/ecs/ecs.config
 
     echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
     sysctl -p
 
     cat <<EOF > /etc/systemd/system/nat-setup.service
@@ -142,8 +144,8 @@ resource "aws_ecs_task_definition" "traefik" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.default.name
-          "awslogs-region"        = local.region,
-          "awslogs-stream-prefix" = "traefik",
+          "awslogs-region"        = local.region
+          "awslogs-stream-prefix" = "traefik"
         }
       }
 
@@ -193,34 +195,27 @@ resource "aws_security_group" "traefik" {
   vpc_id = aws_vpc.default.id
 
   ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = []
-    cidr_blocks     = ["0.0.0.0/0"]
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
 
   ingress {
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
-    security_groups = []
-    cidr_blocks     = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = []
-    cidr_blocks     = ["0.0.0.0/0"]
+    from_port        = 443
+    to_port          = 443
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
 }
 
@@ -323,4 +318,13 @@ resource "aws_route53_record" "wildcard_a" {
   type    = "A"
   ttl     = 300
   records = [aws_eip.traefik.public_ip]
+}
+
+resource "aws_route53_record" "wildcard_aaaa" {
+  count   = 1
+  zone_id = local.domain_zone_id
+  name    = "*.testing.${local.domain}"
+  type    = "AAAA"
+  ttl     = 300
+  records = [aws_instance.traefik.ipv6_addresses[0]]
 }
