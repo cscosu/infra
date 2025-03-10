@@ -36,7 +36,6 @@ resource "aws_instance" "traefik" {
     echo "ECS_CLUSTER=${aws_ecs_cluster.default.name}" > /etc/ecs/ecs.config
 
     echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-    echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
     sysctl -p
 
     cat <<EOF > /etc/systemd/system/nat-setup.service
@@ -48,8 +47,8 @@ resource "aws_instance" "traefik" {
 
     [Service]
     Type=oneshot
-    ExecStart=/usr/sbin/iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
-    ExecStop=/usr/sbin/iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
+    ExecStart=/usr/sbin/iptables -t nat -A POSTROUTING -s ${aws_subnet.private.cidr_block} -o eth0 -j MASQUERADE
+    ExecStop=/usr/sbin/iptables -t nat -D POSTROUTING -s ${aws_subnet.private.cidr_block} -o eth0 -j MASQUERADE
     RemainAfterExit=yes
 
     [Install]
@@ -73,6 +72,7 @@ resource "aws_instance" "traefik" {
 resource "aws_ecs_task_definition" "traefik" {
   family        = "${local.name}-traefik"
   task_role_arn = aws_iam_role.traefik.arn
+  network_mode  = "host"
 
   container_definitions = jsonencode([
     {
@@ -100,17 +100,6 @@ resource "aws_ecs_task_definition" "traefik" {
         { name = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_KEYTYPE", value = "EC384" },
         { name = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_DNSCHALLENGE_PROVIDER", value = "route53" },
         { name = "TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE", value = "/etc/traefik/acme/acme.json" },
-      ]
-
-      portMappings = [
-        {
-          containerPort = 80
-          hostPort      = 80
-        },
-        {
-          containerPort = 443
-          hostPort      = 443
-        },
       ]
 
       dockerLabels = {
