@@ -73,7 +73,7 @@ resource "aws_ecs_task_definition" "ctfd" {
   container_definitions = jsonencode([
     {
       name              = "ctfd"
-      image             = "ghcr.io/ctfd/ctfd:3.7.5"
+      image             = "ghcr.io/ctfd/ctfd:3.7.6"
       memoryReservation = 512
 
       links = ["redis", "mariadb"],
@@ -177,11 +177,11 @@ resource "aws_ecs_task_definition" "ctfd" {
     },
     {
       name              = "mariadb"
-      image             = "mariadb:11.6.2-ubi"
+      image             = "mariadb:11.7.2"
       memoryReservation = 512
 
       command = [
-        "mysqld",
+        "mariadbd",
         "--character-set-server=utf8mb4",
         "--collation-server=utf8mb4_unicode_ci",
         "--wait_timeout=28800",

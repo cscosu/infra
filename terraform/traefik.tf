@@ -24,6 +24,14 @@ resource "aws_instance" "traefik" {
     volume_size = 4
   }
 
+  instance_market_options {
+    market_type = "spot"
+    spot_options {
+      instance_interruption_behavior = "stop"
+      spot_instance_type             = "persistent"
+    }
+  }
+
   user_data = base64encode(<<-INIT
     #!/bin/bash
     yum install -y amazon-ssm-agent
@@ -77,7 +85,7 @@ resource "aws_ecs_task_definition" "traefik" {
   container_definitions = jsonencode([
     {
       name              = "traefik"
-      image             = "traefik:v3.3.3"
+      image             = "traefik:3"
       memoryReservation = 256
 
       environment = [
