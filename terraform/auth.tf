@@ -70,7 +70,7 @@ resource "aws_ecs_task_definition" "auth" {
     {
       name              = "auth"
       image             = "${aws_ecr_repository.default.repository_url}:auth2"
-      memoryReservation = 200
+      memoryReservation = 256
 
       mountPoints = [
         {
@@ -82,10 +82,10 @@ resource "aws_ecs_task_definition" "auth" {
 
       dockerLabels = {
         "traefik.enable"                               = "true"
-        "traefik.http.routers.auth.rule"               = "Host(`auth.testing.osucyber.club`)"
+        "traefik.http.routers.auth.rule"               = "Host(`auth.${local.domain}`)"
         "traefik.http.routers.auth.entrypoints"        = "websecure"
         "traefik.http.routers.auth.tls.certResolver"   = "letsencrypt"
-        "traefik.http.routers.auth.tls.domains.0.main" = "*.testing.osucyber.club"
+        "traefik.http.routers.auth.tls.domains.0.main" = "*.${local.domain}"
       }
 
       portMappings = [
@@ -118,8 +118,6 @@ resource "aws_ecs_task_definition" "auth" {
           "awslogs-stream-prefix" = "auth"
         }
       }
-
-      stopTimeout = 300
     }
   ])
 

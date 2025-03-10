@@ -78,8 +78,7 @@ resource "aws_ecs_task_definition" "traefik" {
     {
       name              = "traefik"
       image             = "traefik:v3.3.3"
-      memoryReservation = 200
-      essential         = true
+      memoryReservation = 256
 
       environment = [
         { name = "AWS_DEFAULT_REGION", value = local.region },
@@ -105,28 +104,38 @@ resource "aws_ecs_task_definition" "traefik" {
       dockerLabels = {
         "traefik.enable" = "true"
 
-        "traefik.http.routers.catchall.rule"                                  = "HostRegexp(`^.+\\.testing\\.osucyber\\.club$`)"
+        "traefik.http.routers.catchall.rule"                                  = "HostRegexp(`^.+\\.${replace(local.domain, ".", "\\.")}$`)"
         "traefik.http.routers.catchall.priority"                              = "1"
         "traefik.http.routers.catchall.middlewares"                           = "redirect-to-main"
+        "traefik.http.routers.catchall.service"                               = "catchall"
         "traefik.http.middlewares.redirect-to-main.redirectregex.regex"       = ".*"
         "traefik.http.middlewares.redirect-to-main.redirectregex.replacement" = "https://osucyber.club"
+        "traefik.http.services.catchall.loadbalancer.server.port"             = "443"
 
-        "traefik.http.routers.discord.rule"                                       = "Host(`discord.testing.osucyber.club`)"
-        "traefik.http.routers.discord.middlewares"                                = "redirect-discord"
-        "traefik.http.middlewares.redirect-discord.redirectregex.regex"           = ".*"
-        "traefik.http.middlewares.redirect-discord.redirectregex.replacement"     = "https://discord.gg/x4VgQBTBCp"
-        "traefik.http.routers.zoom.rule"                                          = "Host(`zoom.testing.osucyber.club`)"
-        "traefik.http.routers.zoom.middlewares"                                   = "redirect-zoom"
-        "traefik.http.middlewares.redirect-zoom.redirectregex.regex"              = ".*"
-        "traefik.http.middlewares.redirect-zoom.redirectregex.replacement"        = "https://osu.zoom.us/j/94385413286?pwd=L2pHUEc0blZqV0Erc3pNeWxRTW4vUT09"
-        "traefik.http.routers.mailinglist.rule"                                   = "Host(`mailinglist.testing.osucyber.club`)"
-        "traefik.http.routers.mailinglist.middlewares"                            = "redirect-mailinglist"
-        "traefik.http.middlewares.redirect-mailinglist.redirectregex.regex"       = ".*"
-        "traefik.http.middlewares.redirect-mailinglist.redirectregex.replacement" = "https://eepurl.com/c0qMHn"
-        "traefik.http.routers.attend.rule"                                        = "Host(`attend.testing.osucyber.club`)"
-        "traefik.http.routers.attend.middlewares"                                 = "redirect-attend"
-        "traefik.http.middlewares.redirect-attend.redirectregex.regex"            = ".*"
-        "traefik.http.middlewares.redirect-attend.redirectregex.replacement"      = "https://auth.osucyber.club"
+        "traefik.http.routers.discord.rule"                              = "Host(`discord.${local.domain}`)"
+        "traefik.http.routers.discord.middlewares"                       = "discord"
+        "traefik.http.routers.discord.service"                           = "discord"
+        "traefik.http.middlewares.discord.redirectregex.regex"           = ".*"
+        "traefik.http.middlewares.discord.redirectregex.replacement"     = "https://discord.gg/x4VgQBTBCp"
+        "traefik.http.services.discord.loadbalancer.server.port"         = "443"
+        "traefik.http.routers.zoom.rule"                                 = "Host(`zoom.${local.domain}`)"
+        "traefik.http.routers.zoom.middlewares"                          = "zoom"
+        "traefik.http.routers.zoom.service"                              = "zoom"
+        "traefik.http.middlewares.zoom.redirectregex.regex"              = ".*"
+        "traefik.http.middlewares.zoom.redirectregex.replacement"        = "https://osu.zoom.us/j/94385413286?pwd=L2pHUEc0blZqV0Erc3pNeWxRTW4vUT09"
+        "traefik.http.services.zoom.loadbalancer.server.port"            = "443"
+        "traefik.http.routers.mailinglist.rule"                          = "Host(`mailinglist.${local.domain}`)"
+        "traefik.http.routers.mailinglist.middlewares"                   = "mailinglist"
+        "traefik.http.routers.mailinglist.service"                       = "mailinglist"
+        "traefik.http.middlewares.mailinglist.redirectregex.regex"       = ".*"
+        "traefik.http.middlewares.mailinglist.redirectregex.replacement" = "https://eepurl.com/c0qMHn"
+        "traefik.http.services.mailinglist.loadbalancer.server.port"     = "443"
+        "traefik.http.routers.attend.rule"                               = "Host(`attend.${local.domain}`)"
+        "traefik.http.routers.attend.middlewares"                        = "attend"
+        "traefik.http.routers.attend.service"                            = "attend"
+        "traefik.http.middlewares.attend.redirectregex.regex"            = ".*"
+        "traefik.http.middlewares.attend.redirectregex.replacement"      = "https://auth.osucyber.club"
+        "traefik.http.services.attend.loadbalancer.server.port"          = "443"
       }
 
       logConfiguration = {
@@ -155,8 +164,6 @@ resource "aws_ecs_task_definition" "traefik" {
         timeout  = 3
         interval = 10
       }
-
-      stopTimeout = 300
     }
   ])
 
@@ -290,7 +297,7 @@ data "aws_iam_policy_document" "traefik" {
     condition {
       test     = "StringEquals"
       variable = "route53:ChangeResourceRecordSetsNormalizedRecordNames"
-      values   = ["_acme-challenge.testing.${local.domain}"]
+      values   = ["_acme-challenge.${local.domain}"]
     }
     condition {
       test     = "StringEquals"
@@ -303,7 +310,7 @@ data "aws_iam_policy_document" "traefik" {
 resource "aws_route53_record" "wildcard_a" {
   count   = 1
   zone_id = local.domain_zone_id
-  name    = "*.testing.${local.domain}"
+  name    = "*.${local.domain}"
   type    = "A"
   ttl     = 300
   records = [aws_eip.traefik.public_ip]
@@ -312,7 +319,7 @@ resource "aws_route53_record" "wildcard_a" {
 resource "aws_route53_record" "wildcard_aaaa" {
   count   = 1
   zone_id = local.domain_zone_id
-  name    = "*.testing.${local.domain}"
+  name    = "*.${local.domain}"
   type    = "AAAA"
   ttl     = 300
   records = [aws_instance.traefik.ipv6_addresses[0]]

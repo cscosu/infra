@@ -74,7 +74,7 @@ resource "aws_ecs_task_definition" "ctfd" {
     {
       name              = "ctfd"
       image             = "ghcr.io/ctfd/ctfd:3.7.5"
-      memoryReservation = 200
+      memoryReservation = 512
 
       links = ["redis", "mariadb"],
 
@@ -101,10 +101,10 @@ resource "aws_ecs_task_definition" "ctfd" {
 
       dockerLabels = {
         "traefik.enable"                               = "true"
-        "traefik.http.routers.ctfd.rule"               = "Host(`bootcamp.testing.osucyber.club`)"
+        "traefik.http.routers.ctfd.rule"               = "Host(`bootcamp.${local.domain}`)"
         "traefik.http.routers.ctfd.entrypoints"        = "websecure"
         "traefik.http.routers.ctfd.tls.certResolver"   = "letsencrypt"
-        "traefik.http.routers.ctfd.tls.domains.0.main" = "*.testing.osucyber.club"
+        "traefik.http.routers.ctfd.tls.domains.0.main" = "*.${local.domain}"
       }
 
       portMappings = [
@@ -142,13 +142,11 @@ resource "aws_ecs_task_definition" "ctfd" {
           "awslogs-stream-prefix" = "ctfd"
         }
       }
-
-      stopTimeout = 300
     },
     {
       name              = "redis"
       image             = "redis:7.4.2"
-      memoryReservation = 200
+      memoryReservation = 256
 
       mountPoints = [
         {
@@ -176,13 +174,11 @@ resource "aws_ecs_task_definition" "ctfd" {
           "awslogs-stream-prefix" = "ctfd"
         }
       }
-
-      stopTimeout = 300
     },
     {
       name              = "mariadb"
       image             = "mariadb:11.6.2-ubi"
-      memoryReservation = 200
+      memoryReservation = 512
 
       command = [
         "mysqld",
@@ -226,8 +222,6 @@ resource "aws_ecs_task_definition" "ctfd" {
           "awslogs-stream-prefix" = "ctfd"
         }
       }
-
-      stopTimeout = 300
     }
   ])
 
