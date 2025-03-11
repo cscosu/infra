@@ -2,7 +2,7 @@
 
 [![Terraform v1.10.5](https://img.shields.io/badge/Terraform-v1.10.5-844fba?logo=terraform)](https://terraform.io)
 [![AWS Terraform Provider v5.86.0](https://img.shields.io/badge/hashicorp/aws-v5.86.0-232f3e?logo=amazonwebservices)](https://registry.terraform.io/providers/hashicorp/aws/5.86.0)
-[![Traefik v3.3.3](https://img.shields.io/badge/Traefik-v3.3.3-24a1c1?logo=traefikproxy)](https://traefik.io/traefik)
+[![Traefik v3](https://img.shields.io/badge/Traefik-v3-24a1c1?logo=traefikproxy)](https://traefik.io/traefik)
 [![Terraform validation](https://github.com/cscosu/infra2/actions/workflows/terraform.yaml/badge.svg)](https://github.com/cscosu/infra2/actions/workflows/terraform.yaml)
 
 ## Principles
