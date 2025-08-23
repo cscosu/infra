@@ -214,6 +214,15 @@ resource "aws_security_group" "traefik" {
     ipv6_cidr_blocks = ["::/0"]
   }
 
+  # Allow Traefik to forward smtp traffic from ctfd to the internet
+  ingress {
+    from_port        = 587
+    to_port          = 587
+    protocol         = "tcp"
+    cidr_blocks      = ["10.0.0.0/24"]
+    ipv6_cidr_blocks = [cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 0)]
+  }
+
   egress {
     from_port        = 0
     to_port          = 0
