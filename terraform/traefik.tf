@@ -24,14 +24,6 @@ resource "aws_instance" "traefik" {
     volume_size = 4
   }
 
-  instance_market_options {
-    market_type = "spot"
-    spot_options {
-      instance_interruption_behavior = "stop"
-      spot_instance_type             = "persistent"
-    }
-  }
-
   user_data = base64encode(<<-INIT
     #!/bin/bash
     yum install -y amazon-ssm-agent
