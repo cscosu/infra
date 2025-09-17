@@ -42,6 +42,10 @@
 
 This is a log of important decisions made to the infrastructure, reasoning why a decision was made, and why other options were not chosen. Minor changes, like deploying an extra container, do not necessarily need to be a part of the decisions log. However, changes to the _way_ the infrastructure works should be documented here for future generations.
 
+### 2025-09-17: Move off Spot and to scheduled
+
+Spot instances appear to have gotten less reliable recently, and would pretty frequently go down while people were trying to access the infra. Moving to on demand instances would incur significant costs. Instead, move to on demand instances, but use Eventbridge crons to stop the instances at 1am EST and start them at 9am EST. This gives 8 hours of predictable downtime and a 33% discount, while keeping the infra up during important hours. Leave the traefik instance running 24/7 so the redirects work.
+
 ### 2025-02-05: Traefik for redirects
 
 Use Traefik docker labels for redirects. That is, all subdomains should redirect to [osucyber.club](https://osucyber.club) if they are no used by anything else. Also, certain subdomains like [discord.osucyber.club](https://discord.osucyber.club) should go to a Discord invite link. An alternative (which was used before) was to have an API Gateway in front of a Lambda function which handles redirects. However, this introduces more complexity and adds more resources added to Terraform. Using Traefik is more native since we already have it, and it requires only a small amount of configuration. Though, if Traefik is down, the redirects will stop working. Both options are free of cost, so we choose the most minimal option.
