@@ -122,7 +122,7 @@ resource "aws_ecs_task_definition" "traefik" {
         "traefik.http.routers.zoom.middlewares"                          = "zoom"
         "traefik.http.routers.zoom.service"                              = "zoom"
         "traefik.http.middlewares.zoom.redirectregex.regex"              = ".*"
-        "traefik.http.middlewares.zoom.redirectregex.replacement"        = "https://osu.zoom.us/j/94385413286?pwd=L2pHUEc0blZqV0Erc3pNeWxRTW4vUT09"
+        "traefik.http.middlewares.zoom.redirectregex.replacement"        = "https://osu.zoom.us/j/95898209283?pwd=02sijqexTWX3MvKaElZkTbUtxmUbLb.1"
         "traefik.http.services.zoom.loadbalancer.server.port"            = "443"
         "traefik.http.routers.mailinglist.rule"                          = "Host(`mailinglist.${local.domain}`)"
         "traefik.http.routers.mailinglist.middlewares"                   = "mailinglist"
