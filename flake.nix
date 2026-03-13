@@ -16,18 +16,16 @@
           config.allowUnfreePredicate = pkg:
             builtins.elem (nixpkgs.lib.getName pkg) [
               "terraform"
-              "awscli2"
             ];
         };
-      in {
+      in rec {
         devShells.default = pkgs.mkShell {
           name = "infra-devshell";
           packages = with pkgs; [
-            awscli2
+            awscli
             terraform
             terraform-ls
             go-task
-            ssm-session-manager-plugin
           ];
         };
       }
