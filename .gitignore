@@ -17,3 +17,4 @@ terraform.rc
 export.zip
 .infracost
 /.direnv
+terraform/.terraform.lock.hcl
