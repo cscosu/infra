@@ -76,6 +76,7 @@ resource "aws_instance" "lab_relay" {
     route 192.168.1.0 255.255.255.0
     push "route 192.168.88.0 255.255.255.0"
     push "route 192.168.1.0 255.255.255.0"
+    push "dhcp-option DNS 1.1.1.1"
     keepalive 10 120
     persist-key
     persist-tun
