@@ -16,3 +16,4 @@ terraform.rc
 .env
 export.zip
 .infracost
+/.direnv
